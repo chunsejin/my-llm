@@ -36,17 +36,17 @@ async def chat_completions(
 ):
     if request.stream:
 
-        async def stream_with_error_handling():
+        async def safe_stream():
             try:
                 async for chunk in provider.stream_chat_completion(request):
-                    yield chunk
+                    yield f"data: {json.dumps({'content': chunk})}\n\n"
             except AppError as exc:
                 yield f"data: {json.dumps({'error': exc.message})}\n\n"
             except Exception:
                 logger.exception("Unhandled streaming exception")
                 yield f"data: {json.dumps({'error': 'Internal server error'})}\n\n"
 
-        return StreamingResponse(stream_with_error_handling(), media_type="text/event-stream")
+        return StreamingResponse(safe_stream(), media_type="text/event-stream")
 
     text = await provider.chat_completion(request)
     if text is None:

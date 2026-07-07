@@ -124,8 +124,8 @@ def test_streaming_chat_completions_returns_sse_chunks(client: TestClient) -> No
     override_provider(
         StubProvider(
             stream_chunks=[
-                'data: {"content": "Hello"}\n\n',
-                'data: {"content": " world"}\n\n',
+                "Hello",
+                " world",
             ]
         )
     )

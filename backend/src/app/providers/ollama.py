@@ -53,7 +53,7 @@ class OllamaProvider(LLMProvider):
                     chunk = json.loads(line)
                     content = chunk.get("message", {}).get("content", "")
                     if content:
-                        yield f"data: {json.dumps({'content': content})}\n\n"
+                        yield content
                     if chunk.get("done"):
                         break
 
