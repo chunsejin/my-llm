@@ -28,16 +28,14 @@ class StubProvider(LLMProvider):
             raise self.error
         return self.models
 
-    async def chat_completion(self, request: ChatCompletionRequest) -> str | None:
-        del request
+    async def chat_completion(self, _request: ChatCompletionRequest) -> str | None:
         if self.error is not None:
             raise self.error
         return self.completion
 
     async def stream_chat_completion(
-        self, request: ChatCompletionRequest
+        self, _request: ChatCompletionRequest
     ) -> AsyncGenerator[str, None]:
-        del request
         if self.error is not None:
             raise self.error
         for chunk in self.stream_chunks:
