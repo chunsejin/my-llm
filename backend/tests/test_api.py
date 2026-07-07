@@ -28,13 +28,13 @@ class StubProvider(LLMProvider):
             raise self.error
         return self.models
 
-    async def chat_completion(self, _request: ChatCompletionRequest) -> str | None:
+    async def chat_completion(self, request: ChatCompletionRequest) -> str | None:
         if self.error is not None:
             raise self.error
         return self.completion
 
     async def stream_chat_completion(
-        self, _request: ChatCompletionRequest
+        self, request: ChatCompletionRequest
     ) -> AsyncGenerator[str, None]:
         if self.error is not None:
             raise self.error
@@ -136,3 +136,18 @@ def test_streaming_chat_completions_returns_sse_chunks(client: TestClient) -> No
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert body == 'data: {"content": "Hello"}\n\ndata: {"content": " world"}\n\n'
+
+
+def test_streaming_provider_failure_returns_empty_stream(client_allow_500: TestClient) -> None:
+    override_provider(StubProvider(error=RuntimeError("provider failed")))
+
+    with client_allow_500.stream(
+        "POST",
+        "/api/v1/chat/completions",
+        json={"user_message": "Hello", "stream": True},
+    ) as response:
+        body = "".join(response.iter_text())
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert body == ""
