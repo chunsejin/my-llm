@@ -80,8 +80,13 @@ function App() {
       try {
         const nextModels = await fetchModels()
         setModels(nextModels)
-        setSelectedModel(nextModels[0])
-        setModelStatus(nextModels.length > 0 ? 'ready' : 'empty')
+        if (nextModels.length > 0) {
+          setSelectedModel(nextModels[0])
+          setModelStatus('ready')
+        } else {
+          setSelectedModel(undefined)
+          setModelStatus('empty')
+        }
       } catch (error) {
         setModelStatus('error')
         setError(

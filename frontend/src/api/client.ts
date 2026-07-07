@@ -97,6 +97,7 @@ export async function streamChat(
     }
   }
 
+  // Flush decoder state so a trailing multi-byte character is not dropped.
   buffer += decoder.decode(new Uint8Array(), { stream: false })
   const pendingEvent = buffer.trim()
   if (pendingEvent) {
