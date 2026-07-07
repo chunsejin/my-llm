@@ -51,7 +51,7 @@ def client() -> Iterator[TestClient]:
 
 
 @pytest.fixture
-def client_allow_500() -> Iterator[TestClient]:
+def client_no_raise() -> Iterator[TestClient]:
     app.dependency_overrides.clear()
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
@@ -102,13 +102,11 @@ def test_chat_completions_502_on_none_response(client: TestClient) -> None:
     assert response.json() == {"detail": "No response from provider"}
 
 
-def test_provider_failures_return_500(client_allow_500: TestClient) -> None:
+def test_provider_failures_return_500(client_no_raise: TestClient) -> None:
     override_provider(StubProvider(error=RuntimeError("provider failed")))
 
-    models_response = client_allow_500.get("/api/v1/models")
-    chat_response = client_allow_500.post(
-        "/api/v1/chat/completions", json={"user_message": "Hello"}
-    )
+    models_response = client_no_raise.get("/api/v1/models")
+    chat_response = client_no_raise.post("/api/v1/chat/completions", json={"user_message": "Hello"})
 
     assert models_response.status_code == 500
     assert models_response.json() == {"detail": "Internal server error"}
@@ -138,10 +136,10 @@ def test_streaming_chat_completions_returns_sse_chunks(client: TestClient) -> No
     assert body == 'data: {"content": "Hello"}\n\ndata: {"content": " world"}\n\n'
 
 
-def test_streaming_provider_failure_returns_empty_stream(client_allow_500: TestClient) -> None:
+def test_streaming_provider_failure_returns_empty_stream(client_no_raise: TestClient) -> None:
     override_provider(StubProvider(error=RuntimeError("provider failed")))
 
-    with client_allow_500.stream(
+    with client_no_raise.stream(
         "POST",
         "/api/v1/chat/completions",
         json={"user_message": "Hello", "stream": True},
