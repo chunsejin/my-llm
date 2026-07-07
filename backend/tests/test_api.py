@@ -45,6 +45,14 @@ class StubProvider(LLMProvider):
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     app.dependency_overrides.clear()
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client_allow_500() -> Iterator[TestClient]:
+    app.dependency_overrides.clear()
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
     app.dependency_overrides.clear()
@@ -85,7 +93,7 @@ def test_chat_completions_returns_provider_message(client: TestClient) -> None:
     assert response.json() == {"message": "Hello from provider"}
 
 
-def test_chat_completions_returns_502_when_provider_returns_none(client: TestClient) -> None:
+def test_chat_completions_502_on_none_response(client: TestClient) -> None:
     override_provider(StubProvider(completion=None))
 
     response = client.post("/api/v1/chat/completions", json={"user_message": "Hello"})
@@ -94,11 +102,13 @@ def test_chat_completions_returns_502_when_provider_returns_none(client: TestCli
     assert response.json() == {"detail": "No response from provider"}
 
 
-def test_provider_failures_return_500(client: TestClient) -> None:
+def test_provider_failures_return_500(client_allow_500: TestClient) -> None:
     override_provider(StubProvider(error=RuntimeError("provider failed")))
 
-    models_response = client.get("/api/v1/models")
-    chat_response = client.post("/api/v1/chat/completions", json={"user_message": "Hello"})
+    models_response = client_allow_500.get("/api/v1/models")
+    chat_response = client_allow_500.post(
+        "/api/v1/chat/completions", json={"user_message": "Hello"}
+    )
 
     assert models_response.status_code == 500
     assert models_response.json() == {"detail": "Internal server error"}
