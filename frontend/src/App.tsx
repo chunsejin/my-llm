@@ -104,6 +104,7 @@ function App() {
     event.preventDefault()
     const trimmedMessage = userMessage.trim()
     if (!trimmedMessage) {
+      setChatStatus('idle')
       setError('Enter a message to start the conversation.')
       return
     }

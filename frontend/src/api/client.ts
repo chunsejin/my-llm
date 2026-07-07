@@ -104,7 +104,9 @@ export async function streamChat(
     try {
       processStreamEvent(pendingEvent, onChunk)
     } catch {
-      console.warn('Ignoring incomplete trailing stream event from backend.')
+      console.warn(
+        'Failed to parse trailing stream event from backend; it may be incomplete or malformed.',
+      )
     }
   }
 }
