@@ -36,7 +36,7 @@ function getResponseStatusMessage(params: {
   }
 
   if (modelStatus === 'empty') {
-    return 'No models were returned. Requests will use the backend default model if it is configured.'
+    return 'No models are available yet. Start Ollama or pull a model, then refresh.'
   }
 
   return 'Send a message to start the conversation.'
@@ -66,7 +66,7 @@ function getResponsePlaceholder(params: {
 
 function App() {
   const [models, setModels] = useState<string[]>([])
-  const [selectedModel, setSelectedModel] = useState('')
+  const [selectedModel, setSelectedModel] = useState<string>()
   const [systemPrompt, setSystemPrompt] = useState('You are a helpful assistant.')
   const [userMessage, setUserMessage] = useState('')
   const [responseText, setResponseText] = useState('')
@@ -80,7 +80,7 @@ function App() {
       try {
         const nextModels = await fetchModels()
         setModels(nextModels)
-        setSelectedModel(nextModels[0] ?? '')
+        setSelectedModel(nextModels[0])
         setModelStatus(nextModels.length > 0 ? 'ready' : 'empty')
       } catch (error) {
         setModelStatus('error')
@@ -112,7 +112,7 @@ function App() {
     try {
       await streamChat(
         {
-          model: selectedModel || undefined,
+          model: selectedModel,
           system_prompt: systemPrompt,
           user_message: trimmedMessage,
           stream: true,
@@ -154,13 +154,13 @@ function App() {
         <label>
           Model
           <select
-            value={selectedModel}
-            disabled={modelStatus === 'loading' || models.length === 0}
-            onChange={(event) => setSelectedModel(event.target.value)}
+            value={selectedModel ?? ''}
+            disabled={modelStatus !== 'ready'}
+            onChange={(event) =>
+              setSelectedModel(event.target.value || undefined)
+            }
           >
-            {models.length === 0 ? (
-              <option value="">Use backend default model</option>
-            ) : null}
+            {models.length === 0 ? <option value="">No models available</option> : null}
             {models.map((model) => (
               <option key={model} value={model}>
                 {model}
@@ -192,7 +192,7 @@ function App() {
           />
         </label>
 
-        <button type="submit" disabled={isLoading || modelStatus === 'loading'}>
+        <button type="submit" disabled={isLoading || modelStatus !== 'ready'}>
           {isLoading ? 'Streaming...' : 'Send'}
         </button>
       </form>
