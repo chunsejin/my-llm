@@ -49,13 +49,18 @@ export async function streamChat(
       if (event.startsWith('data:')) {
         const payload = event.replace(/^data:\s*/, '')
 
+        let parsed: { content?: string; error?: string }
         try {
-          const parsed = JSON.parse(payload) as { content?: string }
-          if (parsed.content) {
-            onChunk(parsed.content)
-          }
+          parsed = JSON.parse(payload) as { content?: string; error?: string }
         } catch {
           throw new Error('Invalid streaming payload from backend')
+        }
+
+        if (parsed.error) {
+          throw new Error(parsed.error)
+        }
+        if (parsed.content) {
+          onChunk(parsed.content)
         }
       }
 

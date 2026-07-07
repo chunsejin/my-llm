@@ -1,3 +1,6 @@
+import json
+import logging
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
@@ -12,6 +15,7 @@ from app.models.schemas import (
 from app.providers.base import LLMProvider
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -31,8 +35,18 @@ async def chat_completions(
     provider: LLMProvider = Depends(get_provider),
 ):
     if request.stream:
-        stream = provider.stream_chat_completion(request)
-        return StreamingResponse(stream, media_type="text/event-stream")
+
+        async def stream_with_error_handling():
+            try:
+                async for chunk in provider.stream_chat_completion(request):
+                    yield chunk
+            except AppError as exc:
+                yield f"data: {json.dumps({'error': exc.message})}\n\n"
+            except Exception:
+                logger.exception("Unhandled streaming exception")
+                yield f"data: {json.dumps({'error': 'Internal server error'})}\n\n"
+
+        return StreamingResponse(stream_with_error_handling(), media_type="text/event-stream")
 
     text = await provider.chat_completion(request)
     if text is None:

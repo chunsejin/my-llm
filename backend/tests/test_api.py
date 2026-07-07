@@ -78,7 +78,7 @@ def test_list_models_returns_provider_models(client: TestClient) -> None:
 
 
 @pytest.mark.parametrize("payload", [{}, {"user_message": ""}])
-def test_chat_completions_validation(client: TestClient, payload: dict[str, str]) -> None:
+def test_chat_completions_validation(client: TestClient, payload: dict[str, object]) -> None:
     response = client.post("/api/v1/chat/completions", json=payload)
 
     assert response.status_code == 422
@@ -136,7 +136,7 @@ def test_streaming_chat_completions_returns_sse_chunks(client: TestClient) -> No
     assert body == 'data: {"content": "Hello"}\n\ndata: {"content": " world"}\n\n'
 
 
-def test_streaming_provider_failure_returns_empty_stream(client_no_raise: TestClient) -> None:
+def test_streaming_provider_failure_returns_error_event(client_no_raise: TestClient) -> None:
     override_provider(StubProvider(error=RuntimeError("provider failed")))
 
     with client_no_raise.stream(
@@ -148,4 +148,4 @@ def test_streaming_provider_failure_returns_empty_stream(client_no_raise: TestCl
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
-    assert body == ""
+    assert body == 'data: {"error": "Internal server error"}\n\n'
