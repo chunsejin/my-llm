@@ -99,7 +99,6 @@ function App() {
     event.preventDefault()
     const trimmedMessage = userMessage.trim()
     if (!trimmedMessage) {
-      setChatStatus('error')
       setError('Enter a message to start the conversation.')
       return
     }

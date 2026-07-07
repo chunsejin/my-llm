@@ -28,7 +28,6 @@ async function readErrorMessage(
 function processStreamEvent(
   event: string,
   onChunk: (chunk: string) => void,
-  options?: { ignoreInvalidPayload?: boolean },
 ): void {
   if (!event.startsWith('data:')) {
     return
@@ -45,10 +44,6 @@ function processStreamEvent(
       onChunk(parsed.content)
     }
   } catch {
-    if (options?.ignoreInvalidPayload) {
-      return
-    }
-
     throw new Error('Invalid streaming payload from backend')
   }
 }
@@ -105,6 +100,10 @@ export async function streamChat(
   buffer += decoder.decode(new Uint8Array(), { stream: false })
   const pendingEvent = buffer.trim()
   if (pendingEvent) {
-    processStreamEvent(pendingEvent, onChunk, { ignoreInvalidPayload: true })
+    try {
+      processStreamEvent(pendingEvent, onChunk)
+    } catch {
+      console.warn('Ignoring incomplete trailing stream event from backend.')
+    }
   }
 }
