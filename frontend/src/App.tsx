@@ -3,6 +3,9 @@ import type { FormEvent } from 'react'
 import { fetchModels, streamChat } from './api/client'
 import './App.css'
 
+type ModelStatus = 'loading' | 'ready' | 'empty' | 'error'
+type ChatStatus = 'idle' | 'streaming' | 'done' | 'error'
+
 function App() {
   const [models, setModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState('')
@@ -11,17 +14,23 @@ function App() {
   const [responseText, setResponseText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [modelStatus, setModelStatus] = useState<ModelStatus>('loading')
+  const [chatStatus, setChatStatus] = useState<ChatStatus>('idle')
 
   useEffect(() => {
     const load = async () => {
       try {
         const nextModels = await fetchModels()
         setModels(nextModels)
-        if (nextModels.length > 0) {
-          setSelectedModel(nextModels[0])
-        }
-      } catch {
-        setError('Failed to load models. Check Ollama status.')
+        setSelectedModel(nextModels[0] ?? '')
+        setModelStatus(nextModels.length > 0 ? 'ready' : 'empty')
+      } catch (error) {
+        setModelStatus('error')
+        setError(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load models. Check Ollama status.',
+        )
       }
     }
 
@@ -30,30 +39,66 @@ function App() {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!userMessage.trim()) return
+    const trimmedMessage = userMessage.trim()
+    if (!trimmedMessage) {
+      setChatStatus('error')
+      setError('Enter a message to start the conversation.')
+      return
+    }
 
     setError('')
     setResponseText('')
     setIsLoading(true)
+    setChatStatus('streaming')
 
     try {
       await streamChat(
         {
           model: selectedModel || undefined,
           system_prompt: systemPrompt,
-          user_message: userMessage,
+          user_message: trimmedMessage,
           stream: true,
         },
         (chunk) => {
           setResponseText((prev) => prev + chunk)
         },
       )
-    } catch {
-      setError('An error occurred while streaming the response.')
+      setChatStatus('done')
+    } catch (error) {
+      setChatStatus('error')
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'An error occurred while streaming the response.',
+      )
     } finally {
       setIsLoading(false)
     }
   }
+
+  const responseStatus = error
+    ? error
+    : isLoading
+      ? responseText
+        ? 'Streaming response...'
+        : 'Waiting for the model to start responding...'
+      : chatStatus === 'done'
+        ? responseText
+          ? 'Response complete.'
+          : 'The request finished without any response content.'
+        : modelStatus === 'loading'
+          ? 'Loading available models...'
+          : modelStatus === 'empty'
+            ? 'No models were returned. Requests will use the backend default model if it is configured.'
+            : 'Send a message to start the conversation.'
+
+  const responsePlaceholder = error
+    ? 'No response available because the request failed.'
+    : isLoading
+      ? 'Waiting for streamed content...'
+      : chatStatus === 'done'
+        ? 'The conversation ended without any streamed content.'
+        : 'Response will appear here after you send a message.'
 
   return (
     <main className="container">
@@ -63,9 +108,12 @@ function App() {
           Model
           <select
             value={selectedModel}
+            disabled={modelStatus === 'loading' || models.length === 0}
             onChange={(event) => setSelectedModel(event.target.value)}
           >
-            {models.length === 0 ? <option value="">No models</option> : null}
+            {models.length === 0 ? (
+              <option value="">Use backend default model</option>
+            ) : null}
             {models.map((model) => (
               <option key={model} value={model}>
                 {model}
@@ -73,6 +121,10 @@ function App() {
             ))}
           </select>
         </label>
+
+        {modelStatus === 'loading' ? (
+          <p className="status">Loading models...</p>
+        ) : null}
 
         <label>
           System prompt
@@ -93,17 +145,18 @@ function App() {
           />
         </label>
 
-        <button type="submit" disabled={isLoading}>
+        <button type="submit" disabled={isLoading || modelStatus === 'loading'}>
           {isLoading ? 'Streaming...' : 'Send'}
         </button>
       </form>
 
       <section className="panel">
         <h2>Response stream</h2>
-        <pre>{responseText || 'Response will appear here.'}</pre>
+        <p className={error ? 'status error' : 'status'} aria-live="polite">
+          {responseStatus}
+        </p>
+        <pre aria-busy={isLoading}>{responseText || responsePlaceholder}</pre>
       </section>
-
-      {error ? <p className="error">{error}</p> : null}
     </main>
   )
 }

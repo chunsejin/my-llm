@@ -47,6 +47,11 @@ h2 {
   margin: 0;
 }
 
+.status {
+  margin: 0;
+  color: #4b5563;
+}
+
 pre {
   margin: 0;
   min-height: 180px;
@@ -58,5 +63,4 @@ pre {
 
 .error {
   color: #d1242f;
-  margin: 0;
 }
