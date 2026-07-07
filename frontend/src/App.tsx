@@ -6,6 +6,64 @@ import './App.css'
 type ModelStatus = 'loading' | 'ready' | 'empty' | 'error'
 type ChatStatus = 'idle' | 'streaming' | 'done' | 'error'
 
+function getResponseStatusMessage(params: {
+  error: string
+  isLoading: boolean
+  responseText: string
+  chatStatus: ChatStatus
+  modelStatus: ModelStatus
+}): string {
+  const { error, isLoading, responseText, chatStatus, modelStatus } = params
+
+  if (error) {
+    return error
+  }
+
+  if (isLoading) {
+    return responseText
+      ? 'Streaming response...'
+      : 'Waiting for the model to start responding...'
+  }
+
+  if (chatStatus === 'done') {
+    return responseText
+      ? 'Response complete.'
+      : 'The request finished without any response content.'
+  }
+
+  if (modelStatus === 'loading') {
+    return 'Loading available models...'
+  }
+
+  if (modelStatus === 'empty') {
+    return 'No models were returned. Requests will use the backend default model if it is configured.'
+  }
+
+  return 'Send a message to start the conversation.'
+}
+
+function getResponsePlaceholder(params: {
+  error: string
+  isLoading: boolean
+  chatStatus: ChatStatus
+}): string {
+  const { error, isLoading, chatStatus } = params
+
+  if (error) {
+    return 'No response available because the request failed.'
+  }
+
+  if (isLoading) {
+    return 'Waiting for streamed content...'
+  }
+
+  if (chatStatus === 'done') {
+    return 'The conversation ended without any streamed content.'
+  }
+
+  return 'Response will appear here after you send a message.'
+}
+
 function App() {
   const [models, setModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState('')
@@ -76,29 +134,18 @@ function App() {
     }
   }
 
-  const responseStatus = error
-    ? error
-    : isLoading
-      ? responseText
-        ? 'Streaming response...'
-        : 'Waiting for the model to start responding...'
-      : chatStatus === 'done'
-        ? responseText
-          ? 'Response complete.'
-          : 'The request finished without any response content.'
-        : modelStatus === 'loading'
-          ? 'Loading available models...'
-          : modelStatus === 'empty'
-            ? 'No models were returned. Requests will use the backend default model if it is configured.'
-            : 'Send a message to start the conversation.'
-
-  const responsePlaceholder = error
-    ? 'No response available because the request failed.'
-    : isLoading
-      ? 'Waiting for streamed content...'
-      : chatStatus === 'done'
-        ? 'The conversation ended without any streamed content.'
-        : 'Response will appear here after you send a message.'
+  const responseStatus = getResponseStatusMessage({
+    error,
+    isLoading,
+    responseText,
+    chatStatus,
+    modelStatus,
+  })
+  const responsePlaceholder = getResponsePlaceholder({
+    error,
+    isLoading,
+    chatStatus,
+  })
 
   return (
     <main className="container">

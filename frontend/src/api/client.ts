@@ -97,7 +97,7 @@ export async function streamChat(
     }
   }
 
-  buffer += decoder.decode()
+  buffer += decoder.decode(new Uint8Array(), { stream: false })
   const pendingEvent = buffer.trim()
   if (pendingEvent) {
     processStreamEvent(pendingEvent, onChunk)
