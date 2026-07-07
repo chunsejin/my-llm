@@ -49,7 +49,7 @@ export async function streamChat(
       if (event.startsWith('data:')) {
         const payload = event.replace(/^data:\s*/, '')
 
-        let parsed: { content?: string; error?: string }
+        let parsed: { content?: string; error?: string } = {}
         try {
           parsed = JSON.parse(payload) as { content?: string; error?: string }
         } catch {

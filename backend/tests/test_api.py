@@ -102,14 +102,20 @@ def test_chat_completions_502_on_none_response(client: TestClient) -> None:
     assert response.json() == {"detail": "No response from provider"}
 
 
-def test_provider_failures_return_500(client_no_raise: TestClient) -> None:
+def test_models_provider_failure_returns_500(client_no_raise: TestClient) -> None:
     override_provider(StubProvider(error=RuntimeError("provider failed")))
 
     models_response = client_no_raise.get("/api/v1/models")
-    chat_response = client_no_raise.post("/api/v1/chat/completions", json={"user_message": "Hello"})
 
     assert models_response.status_code == 500
     assert models_response.json() == {"detail": "Internal server error"}
+
+
+def test_chat_provider_failure_returns_500(client_no_raise: TestClient) -> None:
+    override_provider(StubProvider(error=RuntimeError("provider failed")))
+
+    chat_response = client_no_raise.post("/api/v1/chat/completions", json={"user_message": "Hello"})
+
     assert chat_response.status_code == 500
     assert chat_response.json() == {"detail": "Internal server error"}
 
